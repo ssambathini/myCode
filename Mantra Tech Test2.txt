@@ -1,0 +1,132 @@
+Websites
+--------------
+WebsiteID INT (P)
+WebsiteName,
+WebsiteUrl,
+IsActive,
+CreatedDate,
+CreatedBy,
+UpdatedDate,
+UpdatedBy
+
+Country
+--------------
+CountryID (P),
+CountryName, 
+ContryCode, 
+CreatedDate,
+CreatedBy,
+UpdatedDate,
+UpdatedBy
+
+
+City
+------
+CityID (P),
+CityName,
+CreatedDate,
+CreatedBy,
+UpdatedDate,
+UpdatedBy
+
+
+
+Visitors 
+------------
+VisitorID (P)
+VisitorCode, 
+VisitorFirstName, VisitorLastName,
+VisitorEmail, Password, 
+SecondaryEmailID, 
+PhoneNumber,
+CreatedDate,
+CreatedBy,
+UpdatedDate,
+UpdatedBy
+
+VisitorMessages
+---------------------
+VisitorMessageID, (P)
+VisitorID (F)
+WebsiteID, (F)
+VisitorIP, 
+CountryID,
+CityID,
+OS,
+DeviceOrBrowser
+Title,
+Message
+Status,
+IsFavourite BIT,
+IsClicked BIT, 
+OtherOptionalFlags
+CreatedDate
+CreatedBy
+
+
+Report-1
+---------
+SELECT Title, [Message], [Status], WebsiteName as Website
+FROM
+	VisitorMessages VM JOIN Websites WS ON VM.WebsiteID = WS.WebsiteID
+WHERER 
+	VisitorID = @VisitorID
+
+
+
+Report-2
+---------
+SELECT IsFavourite, VisitorCode as 'Visitor ID', WebsiteName as Website, VisitorIP as 'IP Address',
+		CountryName as 'Location', OS, DeviceOrBrowser as 'Device / Browser' , Count(*) as [Messages]
+FROM
+	VisitorMessages VM JOIN Visitors V ON VM.VisitorID = V.VisitorID 
+	JOIN Websites WS ON VM.WebsiteID = WS.WebsiteID
+GROUP BY
+	IsFavourite, VisitorCode, WebsiteName, VisitorIP, CountryName, DeviceOrBrowser 
+
+Report-3
+---------
+SELECT IsActive as [Status], WebsiteName as [Name], WebsiteUrl as [Url], CreatedDate
+FROM
+	Websites
+
+--Delivered messages 
+
+declare @AllMessages INT 
+	SELECT @AllMessages = COUNT(*) FROM VisitorMessages
+	WHERE
+	WebsiteID = CASE WHEN @WebsiteID = 0 THEN WebsiteID ELSE @WebsiteID END
+	AND CountryID = CASE WHEN @CountryID = 0 THEN CountryID ELSE @CountryID END
+	AND CreatedDate BETWEEN  cast('01 ' + @dt as date) AND EOMONTH(cast('01 ' + @dt as date))
+
+SELECT COUNT(*) as 'Messages Clicked', @AllMessages - COUNT(*) as 'Not Clicked'
+FROM
+	VisitorMessages 
+WHERE
+	WebsiteID = CASE WHEN @WebsiteID = 0 THEN WebsiteID ELSE @WebsiteID END
+	AND CountryID = CASE WHEN @CountryID = 0 THEN CountryID ELSE @CountryID END
+	AND CreatedDate BETWEEN  cast('01 ' + @dt as date) AND EOMONTH(cast('01 ' + @dt as date))
+	AND IsClicked  = 1
+
+	--Messages delivered by browser type
+	SELECT DeviceOrBrowser, COUNT(*) as 'Messages Delivered' 
+	FROM
+		VisitorMessages 
+	WHERE
+		WebsiteID = CASE WHEN @WebsiteID = 0 THEN WebsiteID ELSE @WebsiteID END
+		AND CountryID = CASE WHEN @CountryID = 0 THEN CountryID ELSE @CountryID END
+		AND CreatedDate BETWEEN  cast('01 ' + @dt as date) AND EOMONTH(cast('01 ' + @dt as date))
+	GROUP BY 
+		DeviceOrBrowser 
+
+
+--Messages delivered over time
+SELECT CAST(CreatedDate AS DATE), COUNT(*) as 'Messages Delivered' 
+	FROM
+		VisitorMessages 
+	WHERE
+		WebsiteID = CASE WHEN @WebsiteID = 0 THEN WebsiteID ELSE @WebsiteID END
+		AND CountryID = CASE WHEN @CountryID = 0 THEN CountryID ELSE @CountryID END
+		AND CreatedDate BETWEEN  cast('01 ' + @dt as date) AND EOMONTH(cast('01 ' + @dt as date))
+	GROUP BY 
+		CAST(CreatedDate AS DATE) 
